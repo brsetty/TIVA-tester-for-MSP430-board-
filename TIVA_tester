@@ -1,0 +1,298 @@
+//--------------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------------------
+//----------------This code runs a series of test cases to the MSP input and checks the -------------------
+//--------------received output and compares if the obtained result is equal to expected results ----------
+//----------------------Author : Revanth Badadha , Bharadwaaj Varadan--------------------------------------
+//---------------------------------------------------------------------------------------------------------
+#include <stdint.h>
+#include <stdbool.h>
+#include <math.h>
+#include "driverlib/sysctl.h"
+#include "inc/hw_memmap.h"
+#include "driverlib/gpio.h"
+#include "driverlib/pin_map.h"
+#include "driverlib/adc.h"
+#include "driverlib/uart.h"
+#include "inc/tm4c123gh6pm.h"
+#include <include/gpio.h>
+#include <stdio.h>
+
+int setPin(int i);
+uint8_t decode();
+void test_case_1();
+void test_case_2();
+void test_case_3();
+uint32_t expected();
+//-------------------------------MAIN function-------------------------------------------------------------------
+int main(void)
+{
+
+    char str[] = "START TESTING";
+    puts(str);
+//-------------------------------clock set--------------------------------------------------------------------------
+
+    SysCtlClockSet(SYSCTL_SYSDIV_1 | SYSCTL_USE_PLL | SYSCTL_OSC_MAIN |
+                   SYSCTL_XTAL_16MHZ);
+    SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOA);
+    SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOB);
+    SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOE);
+
+//------------------------------------while loop-------------------------------------------------------------------------------
+
+    while(1)
+    {
+//----------------------------------------test case 1 ---------------------------------------------------------------------------
+
+          printf("TEST CASE: 1 - NORMAL MODE\n");
+          test_case_1();
+          puts("TEST CASE complete");
+//----------------------------------------test case 2 ---------------------------------------------------------------------------
+
+          printf("TEST CASE: 2 - input - P1[7:0]\n");
+          test_case_2();
+//----------------------------------------test case 3 ---------------------------------------------------------------------------
+          printf("TEST CASE: 3 - inputs reversed\n");
+          test_case_3();
+     }
+         return 0;
+}
+//-------------------------------test case function 1------------------------------------------------------------------------------------
+void test_case_1()   ///write pins
+{
+    int flag =0;
+    gpioInit(PORT_A, (PIN_2|PIN_3|PIN_4|PIN_5|PIN_6|PIN_7), INPUT);
+    gpioInit(PORT_B, PIN_2, INPUT);
+    gpioInit(PORT_E, PIN_0, INPUT);
+
+    gpioInit(PORT_B, (PIN_0|PIN_1|PIN_4|PIN_5|PIN_6|PIN_7), OUTPUT);
+    gpioInit(PORT_E, (PIN_4|PIN_5), OUTPUT);
+
+    int i=11,value;
+    uint8_t receivedOutput;
+    uint8_t expectedOutput;
+    for(i = 0; i < 16; i++)
+    {
+        //Set initial value to zero.
+        gpioSet(PORT_B, (PIN_5 | PIN_0 | PIN_1 | PIN_4 | PIN_6 | PIN_7), 0x00);
+        gpioSet(PORT_E, (PIN_4 | PIN_5), 0x00);
+
+        value = setPin(i);
+        printf("Input = %d \n",value);
+
+        expectedOutput = expected(value);
+       printf("Expected Output is %d\n",expectedOutput);
+
+        SysCtlDelay(SysCtlClockGet()*1/3);
+        uint8_t val = 0;
+          val += gpioGet(PORT_A, (PIN_2 | PIN_3 | PIN_4 | PIN_5 | PIN_6 | PIN_7));            //read from MSP
+          val = ((val & 0xE0) >> 5) | ((val & 0x1C) << 1);
+          val += (gpioGet(PORT_B, PIN_2) & 0x04) << 4;
+          val += (gpioGet(PORT_E, PIN_0) & 0x01) << 7;
+        receivedOutput = val;
+        printf("Output is %d\n",val);
+
+        if(expectedOutput == receivedOutput)
+        {
+            puts("TEST CASE PASSED ");
+        }
+        else
+        {
+            puts("TEST CASE FAILED");
+
+        }
+
+   }
+    printf("ALL test cases are successfully passed\n");
+}
+//--------------------------------test case function 2-----------------------------------------------------------------------------------
+void test_case_2()   ///write pins
+{
+    gpioInit(PORT_A, (PIN_2|PIN_3|PIN_4|PIN_5|PIN_6|PIN_7), INPUT);
+    gpioInit(PORT_B, PIN_2, INPUT);
+    gpioInit(PORT_E, PIN_0, INPUT);
+
+    gpioInit(PORT_B, (PIN_0|PIN_1|PIN_4|PIN_5|PIN_6|PIN_7), OUTPUT);
+    gpioInit(PORT_E, (PIN_4|PIN_5), OUTPUT);
+
+
+    int i=11,value;
+    uint8_t receivedOutput;
+    uint8_t expectedOutput;
+    for(i = 16; i < 256; i++)
+    {
+        //Set initial value to zero.
+        gpioSet(PORT_B, (PIN_5 | PIN_0 | PIN_1 | PIN_4 | PIN_6 | PIN_7), 0x00);
+        gpioSet(PORT_E, (PIN_4 | PIN_5), 0x00);
+
+        value = setPin(i);
+        printf("Input = %d \n",value);
+
+        expectedOutput = expected(value);
+        printf("Expected Output is %d\n",expectedOutput);
+
+        SysCtlDelay(SysCtlClockGet()*1/3);
+        uint8_t val = 0;
+          val += gpioGet(PORT_A, (PIN_2 | PIN_3 | PIN_4 | PIN_5 | PIN_6 | PIN_7));    ///read from MSP
+          val = ((val & 0xE0) >> 5) | ((val & 0x1C) << 1);
+          val += (gpioGet(PORT_B, PIN_2) & 0x04) << 4;
+          val += (gpioGet(PORT_E, PIN_0) & 0x01) << 7;
+        receivedOutput = val;
+        printf("Output is %d\n",receivedOutput);
+
+        if(expectedOutput == receivedOutput)
+        {
+            puts("TEST CASE PASSED ");
+        }
+        else
+        {
+
+            puts("TEST CASE FAILED");
+
+        }
+   }
+}
+//--------------------------------test case function 3-----------------------------------------------------------------------------------
+void test_case_3()   //read pins
+{
+    gpioSet(PORT_B, (PIN_5 | PIN_0 | PIN_1 | PIN_4 | PIN_6 | PIN_7), 0x00);
+    gpioSet(PORT_E, (PIN_4 | PIN_5), 0x00);
+
+
+    gpioInit(PORT_B, (PIN_0|PIN_1|PIN_4|PIN_5|PIN_6|PIN_7), INPUT);
+    gpioInit(PORT_E, (PIN_4|PIN_5), INPUT);
+
+
+    if(GPIOPinRead(PORT_B,PIN_5))
+        printf("Error in P1.0\n");
+
+    else
+        printf("No error in P1.0\n");
+    SysCtlDelay(SysCtlClockGet()*1/3);
+    if(GPIOPinRead(PORT_B,PIN_0))
+        printf("Error in P1.1\n");
+
+    else
+        printf("No error in P1.1\n");
+    SysCtlDelay(SysCtlClockGet()*1/3);
+    if(GPIOPinRead(PORT_B,PIN_1))
+        printf("Error in P1.2\n");
+
+    else
+        printf("No error in P1.2\n");
+    SysCtlDelay(SysCtlClockGet()*1/3);
+    if(GPIOPinRead(PORT_E,PIN_4))
+        printf("Error in P1.3\n");
+
+    else
+        printf("No error in P1.3\n");
+    SysCtlDelay(SysCtlClockGet()*1/3);
+    if(GPIOPinRead(PORT_E,PIN_5))
+        printf("Error in P1.4\n");
+
+    else
+        printf("No error in P1.4\n");
+    SysCtlDelay(SysCtlClockGet()*1/3);
+    if(GPIOPinRead(PORT_B,PIN_4))
+        printf("Error in P1.5\n");
+
+    else
+        printf("No error in P1.5\n");
+    SysCtlDelay(SysCtlClockGet()*1/3);
+    if(GPIOPinRead(PORT_B,PIN_6))
+        printf("Error in P1.6\n");
+
+    else
+        printf("No error in P1.6\n");
+    SysCtlDelay(SysCtlClockGet()*1/3);
+    if(GPIOPinRead(PORT_E,PIN_7))
+        printf("Error in P1.7\n");
+
+    else
+        printf("No error in P1.7\n");
+
+    //return val;
+
+}
+//--------------------------------------write function to TIVA-----------------------------------------------------------------------------
+int setPin(int i)
+{
+    int value = 0;
+    if(i & 0x01)
+    {
+        gpioSet(PORT_B,PIN_5, 0x20);
+        value |= 0x01;
+//        puts("B5 high");
+    }
+
+    if(i & 0x02)
+    {
+        gpioSet(PORT_B,PIN_0, 0x01);
+        value |= 0x02;
+//        puts("B0 high");
+    }
+
+    if(i & 0x04)
+    {
+        gpioSet(PORT_B,PIN_1, 0x02);
+        value |= 0x04;
+//        puts("B1 high");
+    }
+
+    if(i & 0x08)
+    {
+        gpioSet(PORT_E,PIN_4, 0x10);
+        value |= 0x08;
+//        puts("E4 high");
+    }
+
+    if(i & 0x10)
+    {
+        gpioSet(PORT_E,PIN_5, 0x20);
+        value |= 0x10;
+        //puts("E5 high");
+    }
+
+    if(i & 0x20)
+    {
+        gpioSet(PORT_B,PIN_4, 0x10);
+        value |= 0x20;
+//        puts("A5 high");
+    }
+
+    if(i & 0x40)
+    {
+        gpioSet(PORT_B,PIN_6, 0x40);
+        value |= 0x40;
+//        puts("A6 high");
+    }
+
+    if(i & 0x80)
+    {
+        gpioSet(PORT_B,PIN_7, 0x80);
+        value |= 0x80;
+//        puts("A7 high");
+    }
+
+        return value;
+}
+
+//----------------------------------------Verification code---------------------------------------------------------------------------
+ uint32_t expected(int value)
+ {
+     uint32_t op = 0;
+     switch(value & 0x0F)
+     {
+          case 8:  op=0x01;  break;
+          case 9:  op=0x02;  break;
+          case 10: op=0x04;  break;
+          case 11: op=0x08;  break;
+          case 12: op=0x10;  break;
+          case 13: op=0x20;  break;
+          case 14: op=0x40;  break;
+          case 15: op=0x80;  break;
+          default: op=0xFF;  break;
+     }
+     return op;
+
+ }
+ //--------------------------------------------------------------------------------------------------------------------------------------

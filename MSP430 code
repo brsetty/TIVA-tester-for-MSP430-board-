@@ -1,0 +1,32 @@
+//--------------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------------------
+//read the digital input on pins 3 to 0 of Port 1 as a coded value and decode it on-----------------------
+//output pins 7 to 0 of Port 2 as a simple decoded value--------------------------------------------------
+//----------------------Author : Revanth Badadha , Bharadwaaj Varadan-----------------------------------
+
+#include <msp430.h>  //setting header pins
+int main(void)
+{
+    P2SEL &=~BIT6;
+    P2SEL2 &=~BIT6;    // set P2.6 &2.7 as GPIO pins
+    P2SEL &=~BIT7;
+    P2SEL2 &=~BIT7;
+
+   WDTCTL = WDTPW | WDTHOLD;           //Stop watchdog timer= 5 points
+   P1DIR &=0x00;                       // set PORT 1 as input
+   P2DIR |=0xFF;                       // set PORT 2 as output
+   P2OUT = 0xFF;
+   while(1) {
+       switch(P1IN & 0x0F) {               // read port 1
+             case 8: P2OUT=0x01;  break;
+             case 9: P2OUT=0x02;  break;
+             case 10: P2OUT=0x04;  break;
+             case 11: P2OUT=0x08;  break;
+             case 12: P2OUT=0x10;  break;
+             case 13: P2OUT=0x20;  break;
+             case 14: P2OUT=0x40;  break;
+             case 15: P2OUT=0x80;  break;
+             default: P2OUT=0xFF;  break;
+          }
+   }
+}
